@@ -1,19 +1,5 @@
-# :earth_americas: GDP dashboard template
+# :ambulance: 北九州市の救急活動状況
 
-A simple Streamlit app showing the GDP of different countries in the world.
+北九州市が発足して以降の救急活動の状況をシンプルに表現したStreamlitアプリです。
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://gdp-dashboard-template.streamlit.app/)
-
-### How to run it on your own machine
-
-1. Install the requirements
-
-   ```
-   $ pip install -r requirements.txt
-   ```
-
-2. Run the app
-
-   ```
-   $ streamlit run streamlit_app.py
-   ```
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://emergency-transport-ktq.streamlit.app/)

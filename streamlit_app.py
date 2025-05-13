@@ -76,7 +76,7 @@ if not len(type):
     st.warning("どの類型を確認したいですか？")
 
 selected_type = st.multiselect(
-    'Wどの類型を確認したいですか？',
+    'どの類型を確認したいですか？',
     type,
     ['交通事故', 
      '労働災害', 
