@@ -18,7 +18,20 @@ def get_em_data():
     DATA_URI = 'https://ktq-dwh-api-cxafe3gpd2dcdjf7.japaneast-01.azurewebsites.net/emergencytransports/'
     res_data = requests.get(DATA_URI)
     datas= res_data.json()
-    em_df = pd.DataFrame(datas)
+    em_df_origin = pd.DataFrame(datas)
+    em_df_ja = em_df_origin.rename(columns={'year': '年次',
+                                         'Dispatch_Transport': '出動_搬送',
+                                         'Type': '類型',
+                                         'Number': '件数'})
+    em_df = em_df_ja.replace({'Dispatch': '出動',
+                              'Transport': '搬送',
+                              'Traffic_accident': '交通事故',
+                              'Work-related_accidents': '労働災害',
+                              'General_injury': '一般負傷',
+                              'Perpetrator': '加害',
+                              'Self-inflicted_damage': '自損行為',
+                              'Sudden_illness': '急病',
+                              'Other': 'その他',})
 
     return em_df
 
@@ -39,8 +52,8 @@ em_df = get_em_data()
 ''
 ''
 
-min_value = em_df['year'].min()
-max_value = em_df['year'].max()
+min_value = em_df['年次'].min()
+max_value = em_df['年次'].max()
 
 from_year, to_year = st.slider(
     '何年の状況を見たいですか？',
@@ -48,16 +61,16 @@ from_year, to_year = st.slider(
     max_value=max_value,
     value=[min_value, max_value])
 
-dispatch_transport = em_df['Dispatch_Transport'].unique()
+dispatch_transport = em_df['出動_搬送'].unique()
 
 if not len(dispatch_transport):
     st.warning("どの状況を確認したいですか？")
 
 selected_dispatch_transport = st.selectbox(
     'どの状況を確認したいですか？',
-    ('Dispatch', 'Transport'))
+    ('出動', '搬送'))
 
-type = em_df['Type'].unique()
+type = em_df['類型'].unique()
 
 if not len(type):
     st.warning("どの類型を確認したいですか？")
@@ -65,13 +78,13 @@ if not len(type):
 selected_type = st.multiselect(
     'Wどの類型を確認したいですか？',
     type,
-    ['General_injury', 
-     'Other', 
-     'Perpetrator', 
-     'Self-inflicted_damage', 
-     'Sudden_illness', 
-     'Traffic_accident',
-     'Work-related_accidents'])
+    ['交通事故', 
+     '労働災害', 
+     '一般負傷', 
+     '加害', 
+     '自損行為', 
+     '急病',
+     'その他'])
 
 ''
 ''
@@ -79,10 +92,10 @@ selected_type = st.multiselect(
 
 # Filter the data
 filtered_em_df = em_df[
-    (em_df['Dispatch_Transport'] == (selected_dispatch_transport))
-    & (em_df['Type'].isin(selected_type))
-    & (em_df['year'] <= to_year)
-    & (from_year <= em_df['year'])
+    (em_df['出動_搬送'] == (selected_dispatch_transport))
+    & (em_df['類型'].isin(selected_type))
+    & (em_df['年次'] <= to_year)
+    & (from_year <= em_df['年次'])
 ]
 
 st.header('経年の救急活動状況', divider='gray')
@@ -91,19 +104,19 @@ st.header('経年の救急活動状況', divider='gray')
 
 st.line_chart(
     filtered_em_df,
-    x='year',
-    y='Number',
-    color='Type',
+    x='年次',
+    y='件数',
+    color='類型',
 )
 
 ''
 ''
 
 selected_em_df = em_df[
-    (em_df['Dispatch_Transport'] == (selected_dispatch_transport))]
+    (em_df['出動_搬送'] == (selected_dispatch_transport))]
 
-first_year = selected_em_df[selected_em_df['year'] == from_year]
-last_year = selected_em_df[selected_em_df['year'] == to_year]
+first_year = selected_em_df[selected_em_df['年次'] == from_year]
+last_year = selected_em_df[selected_em_df['年次'] == to_year]
 
 st.header(f'{to_year}年の救急活動', divider='gray')
 
@@ -115,8 +128,8 @@ for i, types in enumerate(selected_type):
     col = cols[i % len(cols)]
 
     with col:
-        first_number = first_year[first_year['Type'] == types]['Number'].iat[0]
-        last_number = last_year[last_year['Type'] == types]['Number'].iat[0]
+        first_number = first_year[first_year['類型'] == types]['件数'].iat[0]
+        last_number = last_year[last_year['類型'] == types]['件数'].iat[0]
 
         if math.isnan(first_number):
             growth = 'n/a'
