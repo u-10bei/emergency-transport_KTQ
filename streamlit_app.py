@@ -1,151 +1,133 @@
 import streamlit as st
+import requests
 import pandas as pd
 import math
-from pathlib import Path
 
 # Set the title and favicon that appear in the Browser's tab bar.
 st.set_page_config(
-    page_title='GDP dashboard',
-    page_icon=':earth_americas:', # This is an emoji shortcode. Could be a URL too.
+    page_title='北九州市の救急活動状況',
+    page_icon=':ambulance:', # This is an emoji shortcode. Could be a URL too.
 )
 
 # -----------------------------------------------------------------------------
 # Declare some useful functions.
 
 @st.cache_data
-def get_gdp_data():
-    """Grab GDP data from a CSV file.
+def get_em_data():
+    
+    DATA_URI = 'https://ktq-dwh-api-cxafe3gpd2dcdjf7.japaneast-01.azurewebsites.net/emergencytransports/'
+    res_data = requests.get(DATA_URI)
+    datas= res_data.json()
+    em_df = pd.DataFrame(datas)
 
-    This uses caching to avoid having to read the file every time. If we were
-    reading from an HTTP endpoint instead of a file, it's a good idea to set
-    a maximum age to the cache with the TTL argument: @st.cache_data(ttl='1d')
-    """
+    return em_df
 
-    # Instead of a CSV on disk, you could read from an HTTP endpoint here too.
-    DATA_FILENAME = Path(__file__).parent/'data/gdp_data.csv'
-    raw_gdp_df = pd.read_csv(DATA_FILENAME)
-
-    MIN_YEAR = 1960
-    MAX_YEAR = 2022
-
-    # The data above has columns like:
-    # - Country Name
-    # - Country Code
-    # - [Stuff I don't care about]
-    # - GDP for 1960
-    # - GDP for 1961
-    # - GDP for 1962
-    # - ...
-    # - GDP for 2022
-    #
-    # ...but I want this instead:
-    # - Country Name
-    # - Country Code
-    # - Year
-    # - GDP
-    #
-    # So let's pivot all those year-columns into two: Year and GDP
-    gdp_df = raw_gdp_df.melt(
-        ['Country Code'],
-        [str(x) for x in range(MIN_YEAR, MAX_YEAR + 1)],
-        'Year',
-        'GDP',
-    )
-
-    # Convert years from string to integers
-    gdp_df['Year'] = pd.to_numeric(gdp_df['Year'])
-
-    return gdp_df
-
-gdp_df = get_gdp_data()
+em_df = get_em_data()
 
 # -----------------------------------------------------------------------------
 # Draw the actual page
 
 # Set the title that appears at the top of the page.
 '''
-# :earth_americas: GDP dashboard
+# :ambulance: 北九州市の救急活動状況
 
-Browse GDP data from the [World Bank Open Data](https://data.worldbank.org/) website. As you'll
-notice, the data only goes to 2022 right now, and datapoints for certain years are often missing.
-But it's otherwise a great (and did I mention _free_?) source of data.
+[北九州市長期時系列統計](https://www.city.kitakyushu.lg.jp/shisei/menu05_0127.html)   
+のウェブサイトから救急活動状況データを無料で閲覧できます。
 '''
 
 # Add some spacing
 ''
 ''
 
-min_value = gdp_df['Year'].min()
-max_value = gdp_df['Year'].max()
+min_value = em_df['year'].min()
+max_value = em_df['year'].max()
 
 from_year, to_year = st.slider(
-    'Which years are you interested in?',
+    '何年の状況を見たいですか？',
     min_value=min_value,
     max_value=max_value,
     value=[min_value, max_value])
 
-countries = gdp_df['Country Code'].unique()
+dispatch_transport = em_df['Dispatch_Transport'].unique()
 
-if not len(countries):
-    st.warning("Select at least one country")
+if not len(dispatch_transport):
+    st.warning("どの状況を確認したいですか？")
 
-selected_countries = st.multiselect(
-    'Which countries would you like to view?',
-    countries,
-    ['DEU', 'FRA', 'GBR', 'BRA', 'MEX', 'JPN'])
+selected_dispatch_transport = st.selectbox(
+    'どの状況を確認したいですか？',
+    ('Dispatch', 'Transport'))
+
+type = em_df['Type'].unique()
+
+if not len(type):
+    st.warning("どの類型を確認したいですか？")
+
+selected_type = st.multiselect(
+    'Wどの類型を確認したいですか？',
+    type,
+    ['General_injury', 
+     'Other', 
+     'Perpetrator', 
+     'Self-inflicted_damage', 
+     'Sudden_illness', 
+     'Traffic_accident',
+     'Work-related_accidents'])
 
 ''
 ''
 ''
 
 # Filter the data
-filtered_gdp_df = gdp_df[
-    (gdp_df['Country Code'].isin(selected_countries))
-    & (gdp_df['Year'] <= to_year)
-    & (from_year <= gdp_df['Year'])
+filtered_em_df = em_df[
+    (em_df['Dispatch_Transport'] == (selected_dispatch_transport))
+    & (em_df['Type'].isin(selected_type))
+    & (em_df['year'] <= to_year)
+    & (from_year <= em_df['year'])
 ]
 
-st.header('GDP over time', divider='gray')
+st.header('経年の救急活動状況', divider='gray')
 
 ''
 
 st.line_chart(
-    filtered_gdp_df,
-    x='Year',
-    y='GDP',
-    color='Country Code',
+    filtered_em_df,
+    x='year',
+    y='Number',
+    color='Type',
 )
 
 ''
 ''
 
+selected_em_df = em_df[
+    (em_df['Dispatch_Transport'] == (selected_dispatch_transport))]
 
-first_year = gdp_df[gdp_df['Year'] == from_year]
-last_year = gdp_df[gdp_df['Year'] == to_year]
+first_year = selected_em_df[selected_em_df['year'] == from_year]
+last_year = selected_em_df[selected_em_df['year'] == to_year]
 
-st.header(f'GDP in {to_year}', divider='gray')
+st.header(f'{to_year}年の救急活動', divider='gray')
 
 ''
 
 cols = st.columns(4)
 
-for i, country in enumerate(selected_countries):
+for i, types in enumerate(selected_type):
     col = cols[i % len(cols)]
 
     with col:
-        first_gdp = first_year[first_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-        last_gdp = last_year[last_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
+        first_number = first_year[first_year['Type'] == types]['Number'].iat[0]
+        last_number = last_year[last_year['Type'] == types]['Number'].iat[0]
 
-        if math.isnan(first_gdp):
+        if math.isnan(first_number):
             growth = 'n/a'
             delta_color = 'off'
         else:
-            growth = f'{last_gdp / first_gdp:,.2f}x'
+            growth = f'{last_number / first_number:,.2f}x'
             delta_color = 'normal'
 
         st.metric(
-            label=f'{country} GDP',
-            value=f'{last_gdp:,.0f}B',
+            label=f'{types} 件数',
+            value=f'{last_number:,.0f}',
             delta=growth,
             delta_color=delta_color
         )
