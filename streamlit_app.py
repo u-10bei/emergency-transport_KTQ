@@ -134,6 +134,9 @@ for i, types in enumerate(selected_type):
         if math.isnan(first_number):
             growth = 'n/a'
             delta_color = 'off'
+        elif first_number > last_number:
+            growth = f'{(last_number / first_number - 1) * 100:,.2f}%'
+            delta_color = 'normal'
         else:
             growth = f'{last_number / first_number:,.2f}x'
             delta_color = 'normal'
